@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "github.com.covidhub.covid-socialgraph";
+option java_outer_classname = "SocialGraphProto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+package socialgraph;
+
+service SocialGraph {
+    rpc GetProfile(google.protobuf.StringValue) returns (Profile) {}
+    rpc AddProfile(Profile) returns (google.protobuf.StringValue) {}
+    rpc UpdateProfile(Profile) returns (google.protobuf.StringValue) {}
+
+    rpc GetContacts(google.protobuf.StringValue) returns (stream Contact) {}
+    rpc AddContact(Contact) returns (PublicProfile) {}
+
+    rpc GetBonds(google.protobuf.StringValue) returns (stream Contact) {}
+    rpc AddBond(google.protobuf.StringValue) returns (PublicProfile) {}
+    rpc DeleteBond(google.protobuf.StringValue) returns (PublicProfile) {}
+
+    rpc GetReport(google.protobuf.StringValue) returns (Report) {}
+    rpc GetSummary(google.protobuf.StringValue) returns (Summary) {}
+}
+
+message Contact {
+    string user_id = 1;
+    PublicProfile contact_with = 2;
+    google.protobuf.Timestamp time_of_contact = 3;
+    Point point_of_contact = 4;
+}
+
+message Report {
+    repeated Infection infection = 1;
+    Recommendation recommendation = 2;
+}
+
+message Infection {
+    enum Type {
+        CONTACT = 0;
+        CLOSE_CONTACT = 1;
+        INDIRECT = 2; // via close contact
+    }
+    Type type = 1;
+    google.protobuf.Timestamp reported_at = 2;
+}
+
+message Recommendation {
+    enum RiskLevel {
+        LOW = 0;
+        MEDIUM = 1;
+        HIGH = 2;
+    }
+    RiskLevel risklevel = 1;
+
+    string actions = 2;
+}
+
+message Summary {
+    int32 num_contacts = 1;
+    int32 total_infected_contacts = 2;
+    int32 infected_contacts = 3;
+
+    int32 num_close_contacts = 4;
+    int32 infected_close_contacts = 5;
+}
+
+message Profile {
+    string id = 1;
+    int32 age = 2;
+
+    enum AgeGroup {
+        CHILD = 0;                  // 0-12
+        TEENAGER = 1;               // 13-19
+        YOUNG_ADULT_TWENTIES = 2;   // 20-30
+        YOUNG_ADULT_THIRTIES = 3;   // 30-40
+        MIDDLE_AGED_FOURTIES = 4;   // 40-50
+        MIDDLE_AGED_FIFTIES = 5;    // 50-60
+        SENIOR = 6;                 // 60+
+    }
+    AgeGroup age_group = 3;
+
+    enum CovidStatus {
+        NOT_INFECTED = 0;
+        INFECTED = 1;
+        RECOVERD = 2;
+    }
+    CovidStatus covid_status = 4;
+
+    enum MedicalConditions {
+        HEART_DISEASE = 0;
+        RESPIRATORY_DISEASE = 1;
+        AUTOIMMUNE_DISEASE = 2;
+        DIABETES = 3;
+    }
+    repeated MedicalConditions medical_conditions = 5;
+}
+
+message PublicProfile {
+    string id = 1;
+    string first_name = 2;
+    string last_name =3;
+    string middle_name = 4;
+}
+
+message Point {
+  int32 latitude = 1;
+  int32 longitude = 2;
+}
+
