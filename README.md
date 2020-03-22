@@ -1,1 +1,3 @@
 # covid-socialgraph
+
+## info
