@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -38,8 +39,10 @@ func main() {
 	defer zapLogger.Sync()
 	logger := zapLogger.Sugar()
 
+	var db *database.Client
+
 	logger.Info("Connecting to database")
-	db, err := database.New(logger, *dbURL, dbUser, dbPassword)
+	db, err = database.New(logger, *dbURL, dbUser, dbPassword)
 	if err != nil {
 		logger.Fatalw(
 			"Failed to connect to database",
@@ -48,7 +51,8 @@ func main() {
 	}
 
 	logger.Info("Starting grpc server")
-	server, err := server.New(*grpcHost, *grpcPort, *tls, *certFile, *keyFile, logger)
+	url := fmt.Sprintf("%s:%d", *grpcHost, *grpcPort)
+	server, err := server.New(url, *tls, *certFile, *keyFile, db, logger)
 	if err != nil {
 		logger.Fatalw(
 			"Failed to start grpc server",

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/covidhub/covid-socialgraph/pkg/database"
 	pb "github.com/covidhub/covid-socialgraph/pkg/server/socialgraph"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -20,12 +22,14 @@ type SocialgraphServer struct {
 	opts []grpc.ServerOption
 
 	server *grpc.Server
+	db     *database.Client
 	logger *zap.SugaredLogger
 }
 
-func New(host string, port int, tls bool, certFile, keyFile string, logger *zap.SugaredLogger) (*SocialgraphServer, error) {
+func New(url string, tls bool, certFile, keyFile string, db *database.Client, logger *zap.SugaredLogger) (*SocialgraphServer, error) {
 	socialgraphServer := &SocialgraphServer{
-		url:    fmt.Sprintf("%s:%d", host, port),
+		url:    url,
+		db:     db,
 		logger: logger,
 	}
 
@@ -68,41 +72,121 @@ func (s *SocialgraphServer) Close() {
 }
 
 func (s *SocialgraphServer) GetProfile(context.Context, *wrappers.StringValue) (*pb.Profile, error) {
-	return nil, nil
+	profile := &pb.Profile{
+		Id:          "id1234",
+		Age:         42,
+		AgeGroup:    pb.Profile_MIDDLE_AGED_FOURTIES,
+		CovidStatus: pb.Profile_NOT_INFECTED,
+		MedicalConditions: []pb.Profile_MedicalConditions{
+			pb.Profile_HEART_DISEASE,
+			pb.Profile_RESPIRATORY_DISEASE,
+			pb.Profile_AUTOIMMUNE_DISEASE,
+			pb.Profile_DIABETES,
+		},
+	}
+	return profile, nil
 }
 
-func (s *SocialgraphServer) AddProfile(context.Context, *pb.Profile) (*wrappers.StringValue, error) {
-	return nil, nil
+func (s *SocialgraphServer) AddProfile(ctx context.Context, profile *pb.Profile) (*wrappers.StringValue, error) {
+	return &wrappers.StringValue{Value: "id1234"}, nil
 }
 
-func (s *SocialgraphServer) UpdateProfile(context.Context, *pb.Profile) (*wrappers.StringValue, error) {
-	return nil, nil
+func (s *SocialgraphServer) UpdateProfile(ctx context.Context, profile *pb.Profile) (*wrappers.StringValue, error) {
+	return &wrappers.StringValue{Value: "id1234"}, nil
 }
 
-func (s *SocialgraphServer) GetContacts(*wrappers.StringValue, pb.SocialGraph_GetContactsServer) error {
+func (s *SocialgraphServer) GetContacts(id *wrappers.StringValue, stream pb.SocialGraph_GetContactsServer) error {
+	pubProfile := &pb.PublicProfile{
+		Id:         "id5678",
+		FirstName:  "Max",
+		LastName:   "Mustermann",
+		MiddleName: "Middlename",
+	}
+
+	contact := &pb.Contact{
+		UserId:         "id1234",
+		ContactWith:    pubProfile,
+		TimeOfContact:  ptypes.TimestampNow(),
+		PointOfContact: &pb.Point{Longitude: 1.0, Latitude: 1.0},
+	}
+
+	if err := stream.Send(contact); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (s *SocialgraphServer) AddContact(context.Context, *pb.Contact) (*pb.PublicProfile, error) {
-	return nil, nil
+func (s *SocialgraphServer) AddContact(ctx context.Context, contact *pb.Contact) (*pb.PublicProfile, error) {
+	pubProfile := &pb.PublicProfile{
+		Id:         "id1234",
+		FirstName:  "Max",
+		LastName:   "Mustermann",
+		MiddleName: "Middlename",
+	}
+	return pubProfile, nil
 }
 
-func (s *SocialgraphServer) GetBonds(*wrappers.StringValue, pb.SocialGraph_GetBondsServer) error {
+func (s *SocialgraphServer) GetBonds(id *wrappers.StringValue, stream pb.SocialGraph_GetBondsServer) error {
+	pubProfile := &pb.PublicProfile{
+		Id:         "id1234",
+		FirstName:  "Max",
+		LastName:   "Mustermann",
+		MiddleName: "Middlename",
+	}
+
+	if err := stream.Send(pubProfile); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (s *SocialgraphServer) AddBond(context.Context, *wrappers.StringValue) (*pb.PublicProfile, error) {
-	return nil, nil
+func (s *SocialgraphServer) AddBond(ctx context.Context, id *wrappers.StringValue) (*pb.PublicProfile, error) {
+	pubProfile := &pb.PublicProfile{
+		Id:         "id1234",
+		FirstName:  "Max",
+		LastName:   "Mustermann",
+		MiddleName: "Middlename",
+	}
+
+	return pubProfile, nil
 }
 
-func (s *SocialgraphServer) DeleteBond(context.Context, *wrappers.StringValue) (*pb.PublicProfile, error) {
-	return nil, nil
+func (s *SocialgraphServer) DeleteBond(ctx context.Context, id *wrappers.StringValue) (*pb.PublicProfile, error) {
+	pubProfile := &pb.PublicProfile{
+		Id:         "id1234",
+		FirstName:  "Max",
+		LastName:   "Mustermann",
+		MiddleName: "Middlename",
+	}
+
+	return pubProfile, nil
 }
 
-func (s *SocialgraphServer) GetReport(context.Context, *wrappers.StringValue) (*pb.Report, error) {
-	return nil, nil
+func (s *SocialgraphServer) GetReport(ctx context.Context, id *wrappers.StringValue) (*pb.Report, error) {
+	infection := &pb.Infection{
+		Type:       pb.Infection_CONTACT,
+		ReportedAt: ptypes.TimestampNow(),
+	}
+
+	recommendation := &pb.Recommendation{}
+
+	report := &pb.Report{
+		Infection:      []*pb.Infection{infection},
+		Recommendation: recommendation,
+	}
+
+	return report, nil
 }
 
-func (s *SocialgraphServer) GetSummary(context.Context, *wrappers.StringValue) (*pb.Summary, error) {
-	return nil, nil
+func (s *SocialgraphServer) GetSummary(ctx context.Context, id *wrappers.StringValue) (*pb.Summary, error) {
+	summary := &pb.Summary{
+		NumContacts:              42,
+		TotalInfectedContacts:    9,
+		RecentlyInfectedContacts: 2,
+		NumCloseContacts:         6,
+		InfectedCloseContacts:    0,
+	}
+	return summary, nil
 }
